@@ -139,5 +139,12 @@ if st.session_state.get("game_over", False):
     st.markdown("## 🏆 Leaderboard")
     top_scores = get_leaderboard()
     for i, row in enumerate(top_scores, start=1):
-        st.markdown(f"{i}. **{row.name}** — {row.attempts} tries")
+        # Try both attribute and dict access
+        try:
+            name = row.name
+            attempts = row.attempts
+        except AttributeError:
+            name = row["name"]
+            attempts = row["attempts"]
 
+        st.markdown(f"{i}. **{name}** — {attempts} tries")
