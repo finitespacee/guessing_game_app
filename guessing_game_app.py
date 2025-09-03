@@ -139,6 +139,3 @@ if st.session_state.get("game_over", False):
     top_scores = get_leaderboard()
     for i, row in enumerate(top_scores, start=1):
         st.markdown(f"{i}. **{row['name']}** — {row['attempts']} tries")
-
-if __name__ == "__main__":
-    main()
