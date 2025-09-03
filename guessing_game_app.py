@@ -3,6 +3,7 @@ import random
 from pathlib import Path
 from sqlalchemy import text
 
+# Main Game Logic
 def main():
     # Page config
     st.set_page_config(
@@ -94,7 +95,6 @@ def main():
             st.session_state.game_over = False
             st.session_state.game_started = True
             st.experimental_rerun()
-            return  # stop here after rerun
 
     # ----- Game Play -----
     if st.session_state.game_started:
@@ -137,12 +137,10 @@ def main():
         if st.button("🔄 Play Again"):
             st.session_state.game_started = False
             st.experimental_rerun()
-            return  # stop here after rerun
 
         st.markdown("## 🏆 Leaderboard")
         top_scores = get_leaderboard()
         for i, row in enumerate(top_scores, start=1):
-            # Use attribute access since row is SQLAlchemy Row object
             st.markdown(f"{i}. **{row.name}** — {row.attempts} tries")
 
 if __name__ == "__main__":
