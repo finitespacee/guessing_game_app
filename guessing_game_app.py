@@ -1,8 +1,7 @@
 import streamlit as st
 import random
-import json
 from pathlib import Path
-import sqlite3
+from sqlalchemy import text
 
 # Page config
 st.set_page_config(
@@ -41,37 +40,30 @@ custom_css = """
 """
 st.markdown(custom_css, unsafe_allow_html=True)
 
-# ----- SQLite Leaderboard Setup -----
-DB_PATH = "leaderboard.db"
+# ----- App Title -----
+st.title("🎯 Number Guessing Game")
 
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("""
+# ----- SQLite Leaderboard Connection -----
+conn = st.connection("leaderboard_db", type="sql")
+
+with conn.session as session:
+    session.execute(text("""
         CREATE TABLE IF NOT EXISTS leaderboard (
             name TEXT,
             attempts INTEGER
         )
-    """)
-    conn.commit()
-    conn.close()
+    """))
+    session.commit()
 
 def get_leaderboard(limit=5):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("SELECT name, attempts FROM leaderboard ORDER BY attempts ASC LIMIT ?", (limit,))
-    rows = c.fetchall()
-    conn.close()
-    return rows
+    with conn.session as session:
+        result = session.execute(text("SELECT name, attempts FROM leaderboard ORDER BY attempts ASC LIMIT :lim"), {"lim": limit})
+        return result.fetchall()
 
 def add_score(name, attempts):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("INSERT INTO leaderboard (name, attempts) VALUES (?, ?)", (name, attempts))
-    conn.commit()
-    conn.close()
-
-init_db()
+    with conn.session as session:
+        session.execute(text("INSERT INTO leaderboard (name, attempts) VALUES (:n, :a)"), {"n": name, "a": attempts})
+        session.commit()
 
 # ----- Session State Initialization -----
 if "game_started" not in st.session_state:
@@ -146,34 +138,5 @@ if st.session_state.get("game_over", False):
 
     st.markdown("## 🏆 Leaderboard")
     top_scores = get_leaderboard()
-    if top_scores:
-        for i, row in enumerate(top_scores, start=1):
-            name, attempts = row
-            st.markdown(f"{i}. **{name}** — {attempts} tries")
-    else:
-        st.write("No scores yet. Be the first!")
-
-    # ----- Feedback Form -----
-    st.markdown("## 📝 Feedback")
-    with st.form("feedback_form"):
-        feedback_text = st.text_area("💬 Tell the creator what you think about the game:")
-        rating = st.select_slider("Rate the experience", options=["😞", "😐", "😊", "😁"], value="😊")
-        submitted = st.form_submit_button("Submit Feedback")
-
-        if submitted:
-            feedback_entry = {
-                "player": st.session_state.player_name,
-                "feedback": feedback_text,
-                "rating": rating
-            }
-            feedback_path = Path("feedback.json")
-            try:
-                if feedback_path.exists():
-                    existing_feedback = json.loads(feedback_path.read_text())
-                else:
-                    existing_feedback = []
-                existing_feedback.append(feedback_entry)
-                feedback_path.write_text(json.dumps(existing_feedback, indent=2, ensure_ascii=False))
-                st.success("✅ Thanks for your feedback!")
-            except Exception as e:
-                st.error(f"⚠️ Error saving feedback: {e}")
+    for i, row in enumerate(top_scores, start=1):
+        st.markdown(f"{i}. **{row['name']}** — {row['attempts']} tries")
